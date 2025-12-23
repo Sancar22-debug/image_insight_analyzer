@@ -70,6 +70,6 @@ AI-powered image analysis using computer vision models.
 
 **Port in use:** Change port in `run.py`
 
-**Activation fails:** Run execution policy command above
+**Failed fetch:** If something goes wrong try putting image second time
 
 **Slow analysis:** Normal on first run, faster after
