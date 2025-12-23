@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Insight Analyzer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #fafafa;
+            min-height: 100vh;
+            padding: 30px 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        .subtitle {
+            color: #888;
+            font-size: 0.8rem;
+            margin-bottom: 25px;
+        }
+
+        .card {
+            background: #fff;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+
+        .upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 6px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .upload-area:hover {
+            border-color: #999;
+        }
+
+        .upload-area.dragover {
+            border-color: #666;
+            background: #f5f5f5;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .preview {
+            display: none;
+            margin: 15px 0;
+        }
+
+        .preview img {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 6px;
+            display: block;
+            margin: 0 auto;
+        }
+
+        button {
+            background: #333;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            width: 100%;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #555;
+        }
+
+        button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 30px;
+        }
+
+        .spinner {
+            border: 2px solid #eee;
+            border-top: 2px solid #333;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 12px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .results {
+            display: none;
+        }
+
+        .section {
+            margin-bottom: 20px;
+        }
+
+        .section:last-child {
+            margin-bottom: 0;
+        }
+
+        .section-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #888;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .caption {
+            font-size: 1rem;
+            line-height: 1.5;
+        }
+
+        .tag {
+            display: inline-block;
+            background: #f0f0f0;
+            color: #333;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            margin: 2px;
+        }
+
+        .attr-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 0.85rem;
+        }
+
+        .attr-row:last-child {
+            border-bottom: none;
+        }
+
+        .attr-label {
+            color: #666;
+        }
+
+        .attr-value {
+            font-weight: 500;
+        }
+
+        .prediction-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .prediction-row:last-child {
+            border-bottom: none;
+        }
+
+        .confidence {
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 3px;
+            background: #f0f0f0;
+        }
+
+        .reasoning {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 8px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 4px;
+        }
+
+        .country-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 0;
+            font-size: 0.85rem;
+        }
+
+        .country-rank {
+            width: 20px;
+            height: 20px;
+            background: #f0f0f0;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 600px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .info {
+            font-size: 0.85rem;
+            color: #666;
+            padding: 4px 0;
+        }
+
+        .info strong {
+            color: #333;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Image Insight Analyzer</h1>
+        <p class="subtitle">YOLOv8m + OpenCLIP + StreetCLIP</p>
+
+        <div class="card">
+            <div class="upload-area" id="uploadArea">
+                <p>Click or drag image here</p>
+                <input type="file" id="fileInput" accept="image/*">
+            </div>
+            <div class="preview" id="preview">
+                <img id="previewImg" alt="Preview">
+            </div>
+            <button id="analyzeBtn" disabled style="margin-top: 15px;">Analyze</button>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p style="color: #888; font-size: 0.85rem;" id="loadingText">Analyzing...</p>
+            <p style="color: #aaa; font-size: 0.75rem; margin-top: 8px;">This may take 1-2 minutes on first run while AI
+                models load.</p>
+        </div>
+
+        <div class="results" id="results">
+            <div class="card">
+                <div class="section">
+                    <div class="section-title">Caption</div>
+                    <div class="caption" id="caption"></div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">Objects</div>
+                    <div id="objects"></div>
+                    <div class="reasoning" id="objectReasoning" style="display: none;"></div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">Attributes</div>
+                    <div id="attributes"></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="grid-2">
+                    <div class="section">
+                        <div class="section-title">Time of Day</div>
+                        <div id="visualTime"></div>
+                    </div>
+                    <div class="section">
+                        <div class="section-title">Season</div>
+                        <div id="visualSeason"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="section">
+                    <div class="section-title">Location Prediction</div>
+                    <div id="geoPrediction"></div>
+                </div>
+            </div>
+
+            <div class="card" id="exifCard" style="display:none;">
+                <div class="section">
+                    <div class="section-title">EXIF Data</div>
+                    <div id="exifData"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const preview = document.getElementById('preview');
+        const previewImg = document.getElementById('previewImg');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        let selectedFile = null;
+
+        uploadArea.onclick = () => fileInput.click();
+        uploadArea.ondragover = e => { e.preventDefault(); uploadArea.classList.add('dragover'); };
+        uploadArea.ondragleave = () => uploadArea.classList.remove('dragover');
+        uploadArea.ondrop = e => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+        };
+        fileInput.onchange = e => { if (e.target.files.length) handleFile(e.target.files[0]); };
+
+        function handleFile(file) {
+            selectedFile = file;
+            const reader = new FileReader();
+            reader.onload = e => {
+                previewImg.src = e.target.result;
+                preview.style.display = 'block';
+                analyzeBtn.disabled = false;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        analyzeBtn.onclick = async () => {
+            if (!selectedFile) return;
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            loading.style.display = 'block';
+            results.style.display = 'none';
+            analyzeBtn.disabled = true;
+
+            try {
+                // Create AbortController for timeout handling
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minute timeout
+
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    body: formData,
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Server error: ${response.status} - ${errorText}`);
+                }
+
+                const data = await response.json();
+
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                    return;
+                }
+
+                document.getElementById('caption').textContent = data.caption || 'N/A';
+
+                const objectsHtml = data.objects?.length > 0
+                    ? data.objects.map(obj => `<span class="tag">${obj.class} (${obj.count})</span>`).join('')
+                    : '<span style="color:#888">No objects detected</span>';
+                document.getElementById('objects').innerHTML = objectsHtml;
+
+                const reasoningEl = document.getElementById('objectReasoning');
+                if (data.object_analysis?.reasoning?.length > 0) {
+                    reasoningEl.textContent = data.object_analysis.reasoning.join(' | ');
+                    reasoningEl.style.display = 'block';
+                } else {
+                    reasoningEl.style.display = 'none';
+                }
+
+                const attrsHtml = data.attributes
+                    ? Object.entries(data.attributes).map(([key, val]) =>
+                        `<div class="attr-row"><span class="attr-label">${key.replace(/_/g, ' ')}</span><span class="attr-value">${val.value}</span></div>`).join('')
+                    : '<span style="color:#888">N/A</span>';
+                document.getElementById('attributes').innerHTML = attrsHtml;
+
+                const timeEl = document.getElementById('visualTime');
+                if (data.visual_predictions?.time_of_day) {
+                    const t = data.visual_predictions.time_of_day;
+                    timeEl.innerHTML = `
+                        <div class="prediction-row">
+                            <span>${t.prediction}</span>
+                            <span class="confidence">${(t.confidence * 100).toFixed(0)}%</span>
+                        </div>
+                        <div class="reasoning">${t.reasoning}</div>
+                    `;
+                } else {
+                    timeEl.innerHTML = '<span style="color:#888">N/A</span>';
+                }
+
+                const seasonEl = document.getElementById('visualSeason');
+                if (data.visual_predictions?.season) {
+                    const s = data.visual_predictions.season;
+                    seasonEl.innerHTML = `
+                        <div class="prediction-row">
+                            <span>${s.prediction}</span>
+                            <span class="confidence">${(s.confidence * 100).toFixed(0)}%</span>
+                        </div>
+                        <div class="reasoning">${s.reasoning}</div>
+                    `;
+                } else {
+                    seasonEl.innerHTML = '<span style="color:#888">N/A</span>';
+                }
+
+                const geoEl = document.getElementById('geoPrediction');
+                if (data.geo_prediction?.predictions?.length > 0) {
+                    let geoHtml = '';
+                    data.geo_prediction.predictions.slice(0, 5).forEach((pred, idx) => {
+                        geoHtml += `<div class="country-row">
+                            <span class="country-rank">${idx + 1}</span>
+                            <span style="flex:1">${pred.country}</span>
+                            <span style="color:#888">${(pred.confidence * 100).toFixed(1)}%</span>
+                        </div>`;
+                    });
+                    if (data.geo_prediction.reasoning) {
+                        geoHtml += `<div class="reasoning">${data.geo_prediction.reasoning}</div>`;
+                    }
+                    geoEl.innerHTML = geoHtml;
+                } else {
+                    geoEl.innerHTML = '<span style="color:#888">Unable to predict</span>';
+                }
+
+                const exifCard = document.getElementById('exifCard');
+                const exifEl = document.getElementById('exifData');
+                if (data.has_exif_location && data.location) {
+                    let exifHtml = '';
+                    const loc = data.location;
+                    if (loc.city || loc.country) exifHtml += `<div class="info"><strong>Location:</strong> ${loc.city || ''} ${loc.country || ''}</div>`;
+                    if (loc.latitude && loc.longitude) exifHtml += `<div class="info"><strong>Coordinates:</strong> ${loc.latitude.toFixed(4)}, ${loc.longitude.toFixed(4)}</div>`;
+                    if (data.weather) exifHtml += `<div class="info"><strong>Weather:</strong> ${data.weather.temperature}°C, ${data.weather.weather_description}</div>`;
+                    if (data.time_info) exifHtml += `<div class="info"><strong>Taken:</strong> ${data.time_info.date} ${data.time_info.time}</div>`;
+                    exifEl.innerHTML = exifHtml;
+                    exifCard.style.display = 'block';
+                } else {
+                    exifCard.style.display = 'none';
+                }
+
+                results.style.display = 'block';
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    alert('Analysis timed out. The AI models may still be loading. Please try again.');
+                } else {
+                    alert('Failed: ' + error.message);
+                }
+            } finally {
+                loading.style.display = 'none';
+                analyzeBtn.disabled = false;
+            }
+        };
+    </script>
+</body>
+
+</html>

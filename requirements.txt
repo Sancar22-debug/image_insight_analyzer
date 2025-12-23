@@ -1,0 +1,15 @@
+flask
+flask-cors
+werkzeug
+torch
+torchvision
+transformers
+pillow
+opencv-python
+geopy
+requests
+timm
+git+https://github.com/openai/CLIP.git
+ultralytics
+open_clip_torch
+numpy
